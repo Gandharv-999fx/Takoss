@@ -1,75 +1,69 @@
-import express, { Request, Response, NextFunction } from 'express';
-import templateRoutes from './templateRoutes';
+import express, { Express, Request, Response } from 'express';
+import cors from 'cors';
+import { Server as SocketIOServer } from 'socket.io';
+import http from 'http';
+import { SimpleTakossOrchestrator, ProjectRequest } from '../orchestrator/simpleTakossOrchestrator';
 
-const app = express();
-const PORT = process.env.API_PORT || 3000;
+export class TakossAPIServer {
+  private app: Express;
+  private server: http.Server;
+  private io: SocketIOServer;
+  private orchestrator: SimpleTakossOrchestrator;
+  private port: number;
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+  constructor(port: number = 3000) {
+    this.port = port;
+    this.app = express();
+    this.server = http.createServer(this.app);
+    this.io = new SocketIOServer(this.server, {
+      cors: { origin: '*', methods: ['GET', 'POST'] },
+    });
 
-// CORS middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    this.orchestrator = new SimpleTakossOrchestrator(process.env.CLAUDE_API_KEY);
 
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+    this.setupMiddleware();
+    this.setupRoutes();
   }
 
-  next();
-});
+  private setupMiddleware(): void {
+    this.app.use(cors());
+    this.app.use(express.json({ limit: '50mb' }));
+  }
 
-// Request logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
+  private setupRoutes(): void {
+    this.app.get('/health', (req: Request, res: Response) => {
+      res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+    });
 
-// Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    service: 'Takoss API',
-    timestamp: new Date().toISOString(),
-  });
-});
+    this.app.post('/api/generate', async (req: Request, res: Response) => {
+      try {
+        const request: ProjectRequest = req.body;
+        const result = await this.orchestrator.generateApplication(request);
+        res.json(result);
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    });
 
-// API routes
-app.use('/api/templates', templateRoutes);
+    this.app.get('/api/examples', (req: Request, res: Response) => {
+      res.json([
+        { name: 'Blog', requirements: 'Create a blog with posts and comments' },
+        { name: 'Todo App', requirements: 'Build a task management system' },
+      ]);
+    });
+  }
 
-// 404 handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found',
-    path: req.path,
-  });
-});
+  public async start(): Promise<void> {
+    await new Promise<void>((resolve) => {
+      this.server.listen(this.port, () => {
+        console.log(`\nTakoss API Server: http://localhost:${this.port}`);
+        resolve();
+      });
+    });
+  }
 
-// Error handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Server error:', err);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error',
-    message: err.message,
-  });
-});
-
-// Start server
-function startServer() {
-  app.listen(PORT, () => {
-    console.log(`🚀 Takoss API server running on port ${PORT}`);
-    console.log(`📡 Health check: http://localhost:${PORT}/health`);
-    console.log(`🗂️  Templates API: http://localhost:${PORT}/api/templates`);
-  });
+  public async stop(): Promise<void> {
+    await this.orchestrator.close();
+    await new Promise<void>((resolve) => this.server.close(() => resolve()));
+  }
 }
-
-// Only start if run directly (not imported)
-if (require.main === module) {
-  startServer();
-}
-
-export { app, startServer };
