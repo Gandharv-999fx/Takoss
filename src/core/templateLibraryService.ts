@@ -1,4 +1,4 @@
-import { PrismaClient, TemplateCategory, ModelType, Prisma } from '@prisma/client';
+import { PrismaClient, TemplateCategory, ModelType, ExecutionStatus, Prisma, PromptTemplate as PrismaPromptTemplate } from '@prisma/client';
 import { PromptTemplate } from '../types/interfaces';
 
 /**
@@ -100,7 +100,7 @@ export class TemplateLibraryService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return templates.map((t) => this.toDomainModel(t));
+    return templates.map((t: any) => this.toDomainModel(t));
   }
 
   /**
@@ -124,7 +124,7 @@ export class TemplateLibraryService {
       orderBy: { usageCount: 'desc' },
     });
 
-    return templates.map((t) => this.toDomainModel(t));
+    return templates.map((t: any) => this.toDomainModel(t));
   }
 
   /**
@@ -200,7 +200,7 @@ export class TemplateLibraryService {
         category: parent.category,
         modelType: parent.modelType,
         tags: parent.tags,
-        metadata: parent.metadata,
+        metadata: parent.metadata || undefined,
         version: parent.version + 1,
         parentId: parentId,
       },
@@ -301,13 +301,13 @@ export class TemplateLibraryService {
     });
 
     const total = executions.length;
-    const successful = executions.filter((e) => e.status === 'SUCCESS').length;
+    const successful = executions.filter((e: any) => e.status === ExecutionStatus.SUCCESS).length;
 
     const avgExecutionTime =
-      executions.reduce((sum, e) => sum + e.executionTime, 0) / total || 0;
+      executions.reduce((sum: number, e: any) => sum + e.executionTime, 0) / total || 0;
 
     const avgTokens =
-      executions.reduce((sum, e) => sum + e.promptTokens + e.completionTokens, 0) /
+      executions.reduce((sum: number, e: any) => sum + e.promptTokens + e.completionTokens, 0) /
         total || 0;
 
     return {
@@ -330,7 +330,7 @@ export class TemplateLibraryService {
       include: { examples: true },
     });
 
-    return templates.map((t) => this.toDomainModel(t));
+    return templates.map((t: any) => this.toDomainModel(t));
   }
 
   /**
