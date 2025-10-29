@@ -3,7 +3,7 @@ import { SubtaskTree, TaskNode } from '../types/interfaces';
 import { v4 as uuidv4 } from 'uuid';
 
 // Example of creating a subtask tree for a simple web app
-async function createExampleSubtaskTree(): Promise<{ root: TaskNode }> {
+async function createExampleSubtaskTree(): Promise<SubtaskTree> {
   // Create root task
   const rootTask: TaskNode = {
     id: uuidv4(),
@@ -144,7 +144,7 @@ async function createExampleSubtaskTree(): Promise<{ root: TaskNode }> {
     id: uuidv4(),
     title: 'Integrate Frontend and Backend',
     description: 'Connect the React frontend with the Node.js backend',
-    type: 'integration',
+    type: 'other',
     status: 'pending',
     children: [],
     promptTemplate: 'integration_template',
@@ -178,19 +178,6 @@ async function createExampleSubtaskTree(): Promise<{ root: TaskNode }> {
   backendTask.children = apiTasks.map(task => task.id);
   rootTask.children = [frontendTask.id, backendTask.id, integrationTask.id];
 
-  // Set up dependencies
-  if (apiTasks[1].metadata && apiTasks[1].metadata.dependencies) {
-    apiTasks[1].metadata.dependencies = [apiTasks[0].id]; // API routes depend on Todo model
-  }
-  
-  if (integrationTask.metadata && integrationTask.metadata.dependencies) {
-    integrationTask.metadata.dependencies = [
-      componentTasks[0].id,
-      componentTasks[1].id,
-      apiTasks[1].id
-    ];
-  }
-
   // Create a map of all tasks for easy lookup
   const allTasks: Record<string, TaskNode> = {
     [rootTask.id]: rootTask,
@@ -201,9 +188,17 @@ async function createExampleSubtaskTree(): Promise<{ root: TaskNode }> {
     ...apiTasks.reduce((acc, task) => ({ ...acc, [task.id]: task }), {})
   };
 
+  // Return as SubtaskTree
   return {
+    id: uuidv4(),
+    name: 'Todo App Builder',
+    description: 'A complete Todo application with React and Node.js',
+    rootTaskId: rootTask.id,
     root: rootTask,
-    allTasks
+    tasks: allTasks,
+    appRequirements: [],
+    createdAt: new Date(),
+    updatedAt: new Date()
   };
 }
 
@@ -219,20 +214,12 @@ async function runExample() {
       maxRetries: 2,
       defaultTimeout: 60000,
       socketEnabled: true,
-      socketPort: 3001,
-      modelConfig: {
-        claude: {
-          apiKey: process.env.ANTHROPIC_API_KEY || 'your-anthropic-api-key'
-        },
-        gemini: {
-          apiKey: process.env.GOOGLE_API_KEY || 'your-google-api-key'
-        }
-      }
+      socketPort: 3001
     });
 
     // Create a subtask tree
     const subtaskTree = await createExampleSubtaskTree();
-    console.log('Created subtask tree with root task:', subtaskTree.root.title);
+    console.log('Created subtask tree with root task:', subtaskTree.name);
 
     // Create a new chain
     const chainId = await orchestrator.createChain('Todo App Builder', subtaskTree);
@@ -261,7 +248,7 @@ async function runExample() {
     });
 
     // Cleanup
-    await orchestrator.shutdown();
+    await orchestrator.close();
 
   } catch (error) {
     console.error('Error running example:', error);

@@ -46,6 +46,7 @@ export class TaskDecomposer {
       name,
       description,
       rootTaskId: rootTask.id,
+      root: rootTask,
       tasks: { [rootTask.id]: rootTask },
       appRequirements: requirements,
       createdAt: new Date(),

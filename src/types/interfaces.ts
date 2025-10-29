@@ -36,8 +36,12 @@ export interface TaskNode {
   type: 'feature' | 'component' | 'function' | 'schema' | 'style' | 'test' | 'other';
   promptTemplate?: string; // ID of the prompt template to use
   promptVariables?: Record<string, any>; // Variables to fill in the prompt template
+  prompt?: string; // The actual prompt text for this task
   parentId?: string; // ID of the parent task
   children: string[]; // IDs of child tasks
+  subtasks?: TaskNode[]; // Direct child task objects (alternative to children IDs)
+  dependencies?: string[]; // IDs of tasks this task depends on
+  requiresPreviousResults?: boolean; // Whether this task needs results from previous tasks
   metadata?: Record<string, any>;
   result?: string; // Result of executing this task (e.g., generated code)
   createdAt: Date;
@@ -50,6 +54,7 @@ export interface SubtaskTree {
   name: string;
   description: string;
   rootTaskId: string;
+  root: TaskNode; // Root task node
   tasks: Record<string, TaskNode>; // Map of task ID to task
   appRequirements: AppRequirement[];
   createdAt: Date;

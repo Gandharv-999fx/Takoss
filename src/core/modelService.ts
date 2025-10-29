@@ -1,7 +1,6 @@
 import { ModelResponse } from '../types/orchestrator';
-import { Anthropic } from '@anthropic-ai/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { OpenAI } from 'openai';
 
 export class ModelService {
   private claudeClient: Anthropic;
@@ -28,7 +27,8 @@ export class ModelService {
         messages: [{ role: 'user', content: prompt }],
       });
 
-      const content = response.content[0].text;
+      const contentBlock = response.content[0];
+      const content = contentBlock.type === 'text' ? contentBlock.text : '';
       
       // Extract code blocks if present
       const codeBlockRegex = /```(?:[\w]*)\n([\s\S]*?)```/g;
@@ -46,13 +46,14 @@ export class ModelService {
         generatedCode,
         metadata: {
           modelName: 'claude-3-sonnet-20240229',
-          promptTokens: response.usage?.input_tokens || 0,
-          completionTokens: response.usage?.output_tokens || 0
+          promptTokens: response.usage.input_tokens,
+          completionTokens: response.usage.output_tokens
         }
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Error executing Claude prompt:', error);
-      throw new Error(`Claude execution failed: ${error.message}`);
+      throw new Error(`Claude execution failed: ${errorMessage}`);
     }
   }
 
@@ -93,8 +94,9 @@ export class ModelService {
         }
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Error executing Gemini prompt:', error);
-      throw new Error(`Gemini execution failed: ${error.message}`);
+      throw new Error(`Gemini execution failed: ${errorMessage}`);
     }
   }
 

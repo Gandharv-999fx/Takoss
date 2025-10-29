@@ -1,6 +1,6 @@
 import { TaskDecomposer } from './core/taskDecomposer';
 import { PromptTemplateManager } from './core/promptTemplateManager';
-import { AIModelService } from './core/aiModelService';
+import { ModelService } from './core/modelService';
 import { promptTemplates } from './templates/promptTemplates';
 import { AppRequirement, TaskDecompositionConfig } from './types/interfaces';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,13 +8,13 @@ import { v4 as uuidv4 } from 'uuid';
 // Demo function to showcase the task decomposition engine
 async function runDemo() {
   console.log('🚀 Starting Takoss Task Decomposition Engine Demo');
-  
+
   // Initialize the prompt template manager with our templates
   const promptManager = new PromptTemplateManager(promptTemplates);
   console.log(`📝 Loaded ${promptTemplates.length} prompt templates`);
-  
-  // Initialize the AI model service (without API keys for demo)
-  const aiService = new AIModelService(promptManager);
+
+  // Initialize the AI model service
+  const modelService = new ModelService();
   
   // Configure the task decomposer
   const config: TaskDecompositionConfig = {

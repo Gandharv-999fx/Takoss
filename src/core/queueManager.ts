@@ -1,11 +1,10 @@
-import { Queue, Worker, QueueScheduler } from 'bullmq';
+import { Queue, Worker } from 'bullmq';
 import Redis from 'ioredis';
 import { PromptJobData, SubstepResult } from '../types/orchestrator';
 
 export class QueueManager {
   private connection: Redis;
   private promptQueue: Queue<PromptJobData, SubstepResult>;
-  private scheduler: QueueScheduler;
   private worker: Worker<PromptJobData, SubstepResult>;
 
   constructor(
@@ -27,11 +26,6 @@ export class QueueManager {
         removeOnComplete: true,
         removeOnFail: 100,
       },
-    });
-
-    // Create the scheduler
-    this.scheduler = new QueueScheduler('prompt-execution', {
-      connection: this.connection,
     });
 
     // Create the worker
@@ -61,15 +55,14 @@ export class QueueManager {
    */
   public async addJob(
     jobData: PromptJobData,
-    options?: { priority?: number; delay?: number; timeout?: number }
+    options?: { priority?: number; delay?: number }
   ): Promise<string> {
     const job = await this.promptQueue.add('execute-prompt', jobData, {
       priority: options?.priority,
       delay: options?.delay,
-      timeout: options?.timeout || 60000,
     });
     
-    return job.id;
+    return job.id || 'unknown';
   }
 
   /**
@@ -98,7 +91,6 @@ export class QueueManager {
    */
   public async close() {
     await this.worker.close();
-    await this.scheduler.close();
     await this.promptQueue.close();
     await this.connection.quit();
   }

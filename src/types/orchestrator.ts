@@ -10,9 +10,7 @@ export interface PromptChainState {
   progress: number; // 0-100
   startTime: Date;
   endTime?: Date;
-  subtaskTree: {
-    root: TaskNode;
-  };
+  subtaskTree: SubtaskTree;
   currentSubstepId?: string;
   results: Record<string, SubstepResult>;
   error?: string;
