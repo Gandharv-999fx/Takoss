@@ -1,0 +1,38 @@
+{
+  "name": "takoss",
+  "version": "1.0.0",
+  "description": "AI-powered full-stack application builder platform",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.10.0",
+    "@google/generative-ai": "^0.1.3",
+    "@langchain/anthropic": "^0.0.10",
+    "@langchain/community": "^0.0.19",
+    "@langchain/core": "^0.1.63",
+    "@langchain/openai": "^0.0.12",
+    "bullmq": "^4.12.4",
+    "express": "^4.18.2",
+    "ioredis": "^5.3.2",
+    "langchain": "^0.0.170",
+    "socket.io": "^4.7.2",
+    "uuid": "^9.0.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/jest": "^29.5.5",
+    "@types/node": "^20.8.2",
+    "@types/socket.io": "^3.0.2",
+    "@types/uuid": "^9.0.7",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  }
+}
