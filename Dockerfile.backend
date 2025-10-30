@@ -1,0 +1,41 @@
+# Backend Dockerfile for Takoss API Server
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies
+RUN npm ci --only=production && \
+    npx prisma generate
+
+# Copy source code
+COPY . .
+
+# Build TypeScript
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install wget for healthcheck
+RUN apk add --no-cache wget
+
+# Copy built files and dependencies
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma
+
+# Create output directory
+RUN mkdir -p /app/output/projects
+
+# Expose port
+EXPOSE 3000
+
+# Run migrations and start server
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/examples/startServer.js"]

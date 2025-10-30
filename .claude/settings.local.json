@@ -5,7 +5,8 @@
       "Bash(npm install:*)",
       "Bash(npm run prisma:generate:*)",
       "Bash(npm create:*)",
-      "Bash(npx tailwindcss init -p)"
+      "Bash(npx tailwindcss init -p)",
+      "Bash(npx prisma generate:*)"
     ],
     "deny": [],
     "ask": []

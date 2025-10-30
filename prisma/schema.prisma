@@ -136,3 +136,87 @@ enum ExecutionStatus {
   FAILURE
   TIMEOUT
 }
+
+// User model for authentication
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String    // Hashed with bcrypt
+  name          String?
+
+  // OAuth fields
+  googleId      String?   @unique
+  githubId      String?   @unique
+
+  // API keys
+  apiKeys       ApiKey[]
+
+  // Projects
+  projects      Project[]
+
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  @@index([email])
+  @@map("users")
+}
+
+// API Keys for programmatic access
+model ApiKey {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([key])
+  @@index([userId])
+  @@map("api_keys")
+}
+
+// Generated Projects
+model Project {
+  id            String   @id @default(uuid())
+  name          String
+  description   String
+  requirements  String   @db.Text
+
+  // Owner
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Generation status
+  status        ProjectStatus @default(PENDING)
+
+  // Results
+  phases        Json?    // Generation phases result
+  artifacts     Json?    // Generated files metadata
+  visualization String?  @db.Text
+  explanation   Json?
+
+  // File system
+  projectPath   String?  // Path on disk
+  zipPath       String?  // Path to zip file
+
+  // Timestamps
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  PENDING
+  GENERATING
+  COMPLETED
+  FAILED
+}
