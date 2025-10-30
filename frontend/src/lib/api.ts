@@ -188,11 +188,97 @@ class APIClient {
   // ==================== PROJECT ENDPOINTS ====================
 
   /**
-   * Generate application
+   * Generate application (non-streaming)
    */
   public async generateApplication(request: ProjectRequest): Promise<GenerationResult> {
     const response = await this.client.post<GenerationResult>('/api/generate', request);
     return response.data;
+  }
+
+  /**
+   * Generate application with streaming updates (SSE)
+   * @param request - Project generation request
+   * @param onProgress - Callback for progress events
+   * @returns Promise that resolves with the final result
+   */
+  public async generateApplicationStreaming(
+    request: ProjectRequest,
+    onProgress: (event: {
+      type: 'phase_start' | 'phase_progress' | 'phase_complete' | 'error' | 'complete';
+      phase: string;
+      message: string;
+      progress?: number;
+      data?: any;
+    }) => void
+  ): Promise<GenerationResult> {
+    return new Promise((resolve, reject) => {
+      const url = `${API_BASE_URL}/api/generate/stream`;
+
+      // Use fetch with SSE (EventSource doesn't support custom headers)
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: JSON.stringify(request),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+
+          if (!reader) {
+            throw new Error('Response body is not readable');
+          }
+
+          let buffer = '';
+          let finalResult: GenerationResult | null = null;
+
+          while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) {
+              break;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+
+                  if (data.type === 'result') {
+                    finalResult = data.data;
+                  } else if (data.type === 'error') {
+                    reject(new Error(data.message));
+                    return;
+                  } else {
+                    onProgress(data);
+                  }
+                } catch (e) {
+                  console.error('Failed to parse SSE message:', e);
+                }
+              }
+            }
+          }
+
+          if (finalResult) {
+            resolve(finalResult);
+          } else {
+            reject(new Error('No result received from server'));
+          }
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
   }
 
   /**

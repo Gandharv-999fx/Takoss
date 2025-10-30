@@ -85,10 +85,23 @@ export const useStore = create<AppState>()(
       setGenerating: (generating) => set({ isGenerating: generating }),
       setCurrentProjectId: (projectId) => set({ currentProjectId: projectId }),
       addProgress: (progress) =>
-        set((state) => ({
-          generationProgress: [...state.generationProgress, progress],
-        })),
-      clearProgress: () => set({ generationProgress: [] }),
+        set((state) => {
+          // Check if phase already exists
+          const existingIndex = state.generationProgress.findIndex(
+            (p) => p.phase === progress.phase
+          );
+
+          if (existingIndex !== -1) {
+            // Update existing phase
+            const updated = [...state.generationProgress];
+            updated[existingIndex] = progress;
+            return { generationProgress: updated };
+          } else {
+            // Add new phase
+            return { generationProgress: [...state.generationProgress, progress] };
+          }
+        }),
+      clearProgress: () => set({ generationProgress: [], isGenerating: false }),
 
       // Projects list
       projects: [],

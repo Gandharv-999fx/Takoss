@@ -7,7 +7,14 @@ import { useStore } from '../lib/store';
  */
 export function useProjects() {
   const queryClient = useQueryClient();
-  const { setProjects, addProject, removeProject } = useStore();
+  const {
+    setProjects,
+    addProject,
+    removeProject,
+    setGenerating,
+    addProgress,
+    clearProgress,
+  } = useStore();
 
   // Fetch all projects
   const {
@@ -24,13 +31,54 @@ export function useProjects() {
     },
   });
 
-  // Generate new project
+  // Generate new project with streaming
   const generateMutation = useMutation({
-    mutationFn: (request: {
+    mutationFn: async (request: {
       projectName: string;
       description: string;
       requirements: string;
-    }) => apiClient.generateApplication(request),
+    }) => {
+      // Clear previous progress and start generation
+      clearProgress();
+      setGenerating(true);
+
+      try {
+        const result = await apiClient.generateApplicationStreaming(request, (event) => {
+          // Map streaming events to progress items
+          let status: 'pending' | 'running' | 'completed' | 'error' = 'pending';
+
+          switch (event.type) {
+            case 'phase_start':
+              status = 'running';
+              break;
+            case 'phase_complete':
+              status = 'completed';
+              break;
+            case 'error':
+              status = 'error';
+              break;
+            case 'complete':
+              status = 'completed';
+              break;
+            default:
+              status = 'running';
+          }
+
+          addProgress({
+            phase: event.phase,
+            status,
+            message: event.message,
+            progress: event.progress,
+          });
+        });
+
+        setGenerating(false);
+        return result;
+      } catch (error) {
+        setGenerating(false);
+        throw error;
+      }
+    },
     onSuccess: (result, variables) => {
       if (result.success) {
         const newProject = {
@@ -42,6 +90,9 @@ export function useProjects() {
         addProject(newProject);
         queryClient.invalidateQueries({ queryKey: ['projects'] });
       }
+    },
+    onError: () => {
+      setGenerating(false);
     },
   });
 

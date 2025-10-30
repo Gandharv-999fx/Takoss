@@ -133,7 +133,59 @@ export class TakossAPIServer {
 
     // ==================== PROJECT GENERATION ROUTES ====================
 
-    // Generate application (requires authentication - JWT or API key)
+    // Generate application with streaming (SSE) (requires authentication - JWT or API key)
+    this.app.post('/api/generate/stream', authMiddleware.authenticate, async (req: Request, res: Response) => {
+      try {
+        const request: ProjectRequest = req.body;
+
+        // Set SSE headers
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+        // Create a new orchestrator instance for this request
+        const streamOrchestrator = new SimpleTakossOrchestrator(process.env.CLAUDE_API_KEY);
+
+        // Listen to progress events and stream them
+        streamOrchestrator.on('progress', (event) => {
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
+        });
+
+        // Start generation
+        const result = await streamOrchestrator.generateApplication(request);
+
+        // Write project to disk
+        if (result.success) {
+          const project = this.projectWriter.convertGenerationToProject(
+            result.projectId,
+            request.projectName,
+            request.description,
+            request.requirements,
+            result
+          );
+
+          await this.projectWriter.writeProject(project);
+          console.log(`✅ Project written to disk: ${result.projectId} (User: ${req.userId})`);
+
+          // Send final result
+          res.write(`data: ${JSON.stringify({ type: 'result', data: result })}\n\n`);
+        } else {
+          res.write(`data: ${JSON.stringify({ type: 'result', data: result })}\n\n`);
+        }
+
+        // Close connection
+        res.end();
+
+        // Cleanup
+        await streamOrchestrator.close();
+      } catch (error: any) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+        res.end();
+      }
+    });
+
+    // Generate application (non-streaming, backward compatible) (requires authentication - JWT or API key)
     this.app.post('/api/generate', authMiddleware.authenticate, async (req: Request, res: Response) => {
       try {
         const request: ProjectRequest = req.body;
