@@ -1,12 +1,33 @@
+/**
+ * ⚠️ UNUSED - Kept for reference
+ *
+ * This file contains a sophisticated orchestration system with BullMQ queue management,
+ * Redis-based context accumulation, and complex task decomposition.
+ *
+ * The current production system uses SimpleTakossOrchestrator instead, which provides
+ * a simpler, direct execution pipeline without queues or Redis dependencies.
+ *
+ * This infrastructure may be useful for:
+ * - Very large/complex projects requiring task decomposition
+ * - Distributed execution across multiple workers
+ * - Long-running generation tasks with resume capability
+ * - Advanced retry and failure handling
+ *
+ * To use this system, you would need to:
+ * 1. Set up Redis for context accumulation
+ * 2. Set up BullMQ for queue management
+ * 3. Switch the API server to use PromptChainOrchestrator instead of SimpleTakossOrchestrator
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
 import express from 'express';
 import EventEmitter from 'events';
-import { 
-  PromptChainState, 
-  ExecutionContext, 
-  SubstepResult, 
+import {
+  PromptChainState,
+  ExecutionContext,
+  SubstepResult,
   PromptJobData,
   OrchestratorConfig,
   ProgressUpdateEvent

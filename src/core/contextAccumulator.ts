@@ -1,3 +1,18 @@
+/**
+ * ⚠️ UNUSED - Kept for reference
+ *
+ * This file provides Redis-based context accumulation for maintaining state
+ * across distributed task execution chains.
+ *
+ * The current production system (SimpleTakossOrchestrator) passes context
+ * directly between phases in-memory, which is simpler and doesn't require Redis.
+ *
+ * This would be useful for:
+ * - Distributed execution where context needs to be shared across workers
+ * - Long-running tasks that need to persist state
+ * - Resume capability after failures
+ */
+
 import Redis from 'ioredis';
 import { SubstepResult, ExecutionContext } from '../types/orchestrator';
 import { TaskNode } from '../types/interfaces';

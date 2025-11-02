@@ -290,57 +290,306 @@ Generated with ❤️ by Takoss
   ): GeneratedProject {
     const files: { path: string; content: string }[] = [];
 
-    // Add frontend files
-    if (result.phases?.frontend) {
-      // Placeholder - actual implementation would extract from result
+    // Add frontend files - USE ACTUAL GENERATED CODE
+    if (result.phases?.frontend?.components && result.phases.frontend.components.length > 0) {
+      // Add each generated component
+      result.phases.frontend.components.forEach((component: any) => {
+        files.push({
+          path: `frontend/src/components/${component.fileName}`,
+          content: component.code,
+        });
+      });
+
+      // Generate main App.tsx that imports all components
+      const componentImports = result.phases.frontend.components
+        .map((c: any) => {
+          const componentName = c.name;
+          const fileName = c.fileName.replace(/\.tsx?$/, '');
+          return `import ${componentName} from './components/${fileName}';`;
+        })
+        .join('\n');
+
+      const componentUsage = result.phases.frontend.components
+        .map((c: any) => `      <${c.name} />`)
+        .join('\n');
+
       files.push({
         path: 'frontend/src/App.tsx',
-        content: '// Generated React App\nexport default function App() { return <div>Hello</div>; }',
+        content: `import React from 'react';
+${componentImports}
+
+function App() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+${componentUsage}
+    </div>
+  );
+}
+
+export default App;
+`,
       });
+
+      // Generate package.json with necessary dependencies
       files.push({
         path: 'frontend/package.json',
         content: JSON.stringify({
           name: projectName + '-frontend',
           version: '1.0.0',
-          dependencies: { react: '^18.0.0', 'react-dom': '^18.0.0' },
+          type: 'module',
+          scripts: {
+            dev: 'vite',
+            build: 'tsc && vite build',
+            preview: 'vite preview',
+          },
+          dependencies: {
+            react: '^18.2.0',
+            'react-dom': '^18.2.0',
+          },
+          devDependencies: {
+            '@types/react': '^18.2.0',
+            '@types/react-dom': '^18.2.0',
+            '@vitejs/plugin-react': '^4.0.0',
+            autoprefixer: '^10.4.14',
+            postcss: '^8.4.24',
+            tailwindcss: '^3.3.2',
+            typescript: '^5.0.0',
+            vite: '^4.3.9',
+          },
         }, null, 2),
+      });
+
+      // Generate Vite config
+      files.push({
+        path: 'frontend/vite.config.ts',
+        content: `import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': 'http://localhost:3000',
+    },
+  },
+});
+`,
+      });
+
+      // Generate tsconfig.json
+      files.push({
+        path: 'frontend/tsconfig.json',
+        content: JSON.stringify({
+          compilerOptions: {
+            target: 'ES2020',
+            useDefineForClassFields: true,
+            lib: ['ES2020', 'DOM', 'DOM.Iterable'],
+            module: 'ESNext',
+            skipLibCheck: true,
+            moduleResolution: 'bundler',
+            allowImportingTsExtensions: true,
+            resolveJsonModule: true,
+            isolatedModules: true,
+            noEmit: true,
+            jsx: 'react-jsx',
+            strict: true,
+            noUnusedLocals: true,
+            noUnusedParameters: true,
+            noFallthroughCasesInSwitch: true,
+          },
+          include: ['src'],
+        }, null, 2),
+      });
+
+      // Generate tsconfig.node.json for Vite config
+      files.push({
+        path: 'frontend/tsconfig.node.json',
+        content: JSON.stringify({
+          compilerOptions: {
+            composite: true,
+            skipLibCheck: true,
+            module: 'ESNext',
+            moduleResolution: 'bundler',
+            allowSyntheticDefaultImports: true,
+          },
+          include: ['vite.config.ts'],
+        }, null, 2),
+      });
+
+      // Generate Tailwind config
+      files.push({
+        path: 'frontend/tailwind.config.js',
+        content: `/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+`,
+      });
+
+      // Generate index.html
+      files.push({
+        path: 'frontend/index.html',
+        content: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${projectName}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+`,
+      });
+
+      // Generate main.tsx
+      files.push({
+        path: 'frontend/src/main.tsx',
+        content: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
+`,
+      });
+
+      // Generate index.css with Tailwind directives
+      files.push({
+        path: 'frontend/src/index.css',
+        content: `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+`,
       });
     }
 
-    // Add backend files
-    if (result.phases?.backend) {
+    // Add backend files - USE ACTUAL GENERATED CODE
+    if (result.phases?.backend?.routes && result.phases.backend.routes.length > 0) {
+      // Add each generated route
+      result.phases.backend.routes.forEach((route: any) => {
+        files.push({
+          path: `backend/src/routes${route.path}`,
+          content: route.code,
+        });
+      });
+
+      // Generate server.ts that imports all routes
+      const routeImports = result.phases.backend.routes
+        .map((r: any, idx: number) => `import route${idx} from './routes${r.path.replace(/\.ts$/, '')}';`)
+        .join('\n');
+
       files.push({
         path: 'backend/src/server.ts',
-        content: '// Generated Express Server\nimport express from "express";\nconst app = express();',
+        content: `import express from 'express';
+import cors from 'cors';
+${routeImports}
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+
+// Routes
+${result.phases.backend.routes.map((r: any, idx: number) => `app.use('/api', route${idx});`).join('\n')}
+
+app.listen(PORT, () => {
+  console.log(\`🚀 Server running on port \${PORT}\`);
+});
+`,
       });
+
       files.push({
         path: 'backend/package.json',
         content: JSON.stringify({
           name: projectName + '-backend',
           version: '1.0.0',
-          dependencies: { express: '^4.18.0', '@prisma/client': '^5.0.0' },
+          scripts: {
+            dev: 'ts-node src/server.ts',
+            build: 'tsc',
+            start: 'node dist/server.js',
+          },
+          dependencies: {
+            express: '^4.18.2',
+            '@prisma/client': '^5.0.0',
+            cors: '^2.8.5',
+          },
+          devDependencies: {
+            '@types/express': '^4.17.17',
+            '@types/cors': '^2.8.13',
+            '@types/node': '^20.3.1',
+            'ts-node': '^10.9.1',
+            typescript: '^5.1.3',
+          },
+        }, null, 2),
+      });
+
+      files.push({
+        path: 'backend/tsconfig.json',
+        content: JSON.stringify({
+          compilerOptions: {
+            target: 'ES2020',
+            module: 'commonjs',
+            lib: ['ES2020'],
+            outDir: './dist',
+            rootDir: './src',
+            strict: true,
+            esModuleInterop: true,
+            skipLibCheck: true,
+            forceConsistentCasingInFileNames: true,
+          },
+          include: ['src/**/*'],
+          exclude: ['node_modules'],
         }, null, 2),
       });
     }
 
-    // Add database schema
-    if (result.phases?.database) {
+    // Add database schema - USE ACTUAL GENERATED SCHEMA
+    if (result.phases?.database?.schema) {
       files.push({
         path: 'prisma/schema.prisma',
-        content: result.phases.database.schema || '// Generated Prisma Schema',
+        content: result.phases.database.schema,
       });
     }
 
-    // Add deployment files
+    // Add deployment files - USE ACTUAL GENERATED CONFIGS
     if (result.phases?.deployment) {
-      files.push({
-        path: 'Dockerfile',
-        content: '# Generated Dockerfile\nFROM node:18-alpine\nWORKDIR /app\nCOPY . .\nRUN npm install\nCMD ["npm", "start"]',
-      });
-      files.push({
-        path: '.dockerignore',
-        content: 'node_modules\n.git\n.env\ndist',
-      });
+      if (result.phases.deployment.dockerFile) {
+        files.push({
+          path: 'Dockerfile',
+          content: result.phases.deployment.dockerFile,
+        });
+      }
+
+      if (result.phases.deployment.dockerCompose) {
+        files.push({
+          path: 'docker-compose.yml',
+          content: result.phases.deployment.dockerCompose,
+        });
+      }
+
+      if (result.phases.deployment.dockerIgnore) {
+        files.push({
+          path: '.dockerignore',
+          content: result.phases.deployment.dockerIgnore,
+        });
+      }
     }
 
     // Add environment template
@@ -348,7 +597,26 @@ Generated with ❤️ by Takoss
       path: '.env.example',
       content: `DATABASE_URL="postgresql://user:pass@localhost:5432/${projectName}"
 CLAUDE_API_KEY="your-api-key"
-NODE_ENV="development"`,
+NODE_ENV="development"
+PORT="3000"`,
+    });
+
+    // Add root package.json for monorepo structure
+    files.push({
+      path: 'package.json',
+      content: JSON.stringify({
+        name: projectName,
+        version: '1.0.0',
+        private: true,
+        workspaces: ['frontend', 'backend'],
+        scripts: {
+          'dev:frontend': 'npm run dev --workspace=frontend',
+          'dev:backend': 'npm run dev --workspace=backend',
+          'build:frontend': 'npm run build --workspace=frontend',
+          'build:backend': 'npm run build --workspace=backend',
+          'build': 'npm run build:frontend && npm run build:backend',
+        },
+      }, null, 2),
     });
 
     return {

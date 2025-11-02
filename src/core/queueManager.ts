@@ -1,3 +1,13 @@
+/**
+ * ⚠️ UNUSED - Kept for reference
+ *
+ * This file provides BullMQ-based queue management for distributed task execution.
+ * It requires a Redis server for queue persistence and coordination.
+ *
+ * The current production system executes tasks directly without queuing.
+ * This is simpler and has fewer dependencies (no Redis required).
+ */
+
 import { Queue, Worker } from 'bullmq';
 import Redis from 'ioredis';
 import { PromptJobData, SubstepResult } from '../types/orchestrator';

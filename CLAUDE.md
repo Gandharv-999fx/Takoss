@@ -93,15 +93,15 @@ VITE_API_URL=http://localhost:3000 # Backend URL for frontend
 
 **SimpleTakossOrchestrator** (`src/orchestrator/simpleTakossOrchestrator.ts`)
 - Main generation pipeline orchestrator
-- Executes 22 AI prompts in sequence across 7 phases:
-  1. Requirements Analysis
-  2. Architecture Design
-  3. Database Schema Design
-  4. Frontend Generation
-  5. Backend Generation
-  6. Deployment Configuration
-  7. Visualization & Documentation
-- Returns `GenerationResult` with all phase outputs
+- Executes 6 phases in sequence with AI-powered code generation:
+  1. **Requirements Analysis** - Uses LangChain to extract entities, features, relationships, and UI requirements
+  2. **Complexity Estimation** - Rule-based scoring to determine project complexity
+  3. **Database Schema** - Generates complete Prisma schema from entities with AI refinement
+  4. **Frontend Components** - Generates React/TypeScript components for ALL UI requirements with proper dependencies
+  5. **Backend API** - Generates Express routes with CRUD operations, validation, and Prisma integration
+  6. **Deployment Configuration** - Creates Dockerfile, docker-compose.yml, and CI/CD configs
+- Includes visualization (DAG) and plain-language project explanation
+- Returns `GenerationResult` with actual generated code from all phases
 
 **TakossAPIServer** (`src/api/server.ts`)
 - Express.js REST API with Socket.IO
@@ -117,6 +117,12 @@ VITE_API_URL=http://localhost:3000 # Backend URL for frontend
 
 **ProjectWriter** (`src/output/projectWriter.ts`)
 - Writes generated projects to `./output/projects/`
+- Generates complete project structure:
+  - **Frontend**: Vite + React + TypeScript with Tailwind CSS
+  - **Backend**: Express + TypeScript with Prisma
+  - **Config files**: package.json, tsconfig.json, vite.config.ts, tailwind.config.js
+  - **Deployment**: Dockerfile, docker-compose.yml, .dockerignore
+  - **Environment**: .env.example with all required variables
 - Creates ZIP archives for download
 - Manages project metadata (`takoss.json`)
 - File tree browsing and individual file access
@@ -125,8 +131,14 @@ VITE_API_URL=http://localhost:3000 # Backend URL for frontend
 
 1. **User Registration/Login** → JWT token issued → Frontend stores in localStorage
 2. **Create Project Request** → `POST /api/generate` with auth header
-3. **Orchestrator Execution** → 22 prompts executed sequentially across 7 phases
-4. **File Generation** → ProjectWriter writes files to `./output/projects/{projectId}/`
+3. **Orchestrator Execution** → 6 phases executed sequentially with AI code generation:
+   - Phase 1: Analyze requirements → Extract entities, features, UI requirements
+   - Phase 2: Estimate complexity → Calculate complexity score
+   - Phase 3: Generate database schema → Create and refine Prisma schema
+   - Phase 4: Generate frontend → Create React components with Tailwind
+   - Phase 5: Generate backend → Create Express routes with Prisma integration
+   - Phase 6: Generate deployment → Create Docker configs and CI/CD
+4. **File Generation** → ProjectWriter creates complete project structure from generated code
 5. **ZIP Creation** → Archive created for download
 6. **Response** → Project metadata returned with success status
 7. **View/Download** → User can browse files or download ZIP
@@ -273,24 +285,64 @@ With appropriate HTTP status codes (400, 401, 404, 500)
 - **DEPLOYMENT.md** - Complete deployment guide (500+ lines)
 - **FRONTEND_COMPONENTS.md** - Component API reference (400+ lines)
 - **SESSION_COMPLETE.md** - Implementation summary
-- **PROMPTS.md** - Details of 22 AI prompts (if exists)
 
-## Recent Architecture Changes
+## Recent Bug Fixes & Improvements (2025-11-02)
 
-This system was refactored from a complex task decomposition approach to a simpler, production-ready full-stack application:
+### Critical Fixes
 
-**Removed:**
-- BullMQ queue system (replaced with direct execution)
-- Redis dependency (no longer needed)
-- Complex task tree decomposition (replaced with sequential pipeline)
-- QueueManager and related infrastructure
+The system had a major logical issue where it was only generating placeholder boilerplate code instead of actual functional applications. The following fixes were implemented:
 
-**Added:**
-- Complete authentication system (JWT + API keys)
-- Full React frontend with adaptive UI
-- File output system with ZIP generation
-- Docker production deployment
-- REST API with proper authentication
-- Database persistence with Prisma
+**1. Fixed Code Generation (Priority 1)**
+- ✅ **ProjectWriter**: Now uses actual generated code instead of hardcoded placeholders
+- ✅ **Component Storage**: SimpleTakossOrchestrator now stores generated component code (not just count)
+- ✅ **All UI Requirements**: Now processes ALL UI requirements instead of just the first one
+- ✅ **Database Schema**: Implemented actual Prisma schema generation from entities with AI refinement
+
+**2. AI Model Optimization (Priority 1)**
+- ✅ **Token Limit**: Increased from 4000 → 8192 tokens for better code generation
+- ✅ **System Prompts**: Added comprehensive code generation guidelines
+- ✅ **Temperature**: Optimized to 0.2 for consistent code output (was unset, used defaults)
+- ✅ **Configurable Settings**: Made temperature and token limits configurable per task
+
+**3. Backend & Deployment Generation (Priority 2)**
+- ✅ **Backend API**: Integrated APIEndpointDecomposer to generate Express routes with CRUD, validation, and Prisma
+- ✅ **Deployment Configs**: Integrated DeploymentTaskDecomposer to generate Dockerfile, docker-compose.yml, CI/CD
+
+**4. Infrastructure Documentation (Priority 4)**
+- ✅ **Marked Unused Files**: Added clear comments to unused infrastructure (~2000+ lines):
+  - `src/core/promptChainOrchestrator.ts` - BullMQ-based task orchestration (kept for reference)
+  - `src/core/taskDecomposer.ts` - Dynamic task decomposition (kept for reference)
+  - `src/core/queueManager.ts` - Queue management with Redis (kept for reference)
+  - `src/core/contextAccumulator.ts` - Redis-based context sharing (kept for reference)
+  - `src/templates/promptTemplates.ts` - Static prompt templates (kept for reference)
+
+### What Was Broken
+
+**Root Cause**: The SimpleTakossOrchestrator was a placeholder implementation that:
+1. Generated component code but immediately discarded it (only stored count)
+2. Used hardcoded placeholder files in ProjectWriter
+3. Didn't actually generate database schemas, backend routes, or deployment configs
+4. Had AI token limits too low for code generation (4000 vs 8192)
+5. Had no system prompts to guide code quality
+
+**What Works Now**:
+- ✅ Full React component generation with proper TypeScript and Tailwind
+- ✅ Complete Prisma schema generation from entities
+- ✅ Express API routes with CRUD operations, validation, and error handling
+- ✅ Dockerfile, docker-compose.yml, and CI/CD configs
+- ✅ Proper monorepo structure with frontend/backend workspaces
+- ✅ All configuration files (package.json, tsconfig.json, vite.config.ts, etc.)
+
+## Architecture Overview
+
+**Active System**: SimpleTakossOrchestrator (6-phase direct execution pipeline)
+
+**Unused Infrastructure** (kept for reference):
+- PromptChainOrchestrator - Complex BullMQ + Redis orchestration for distributed tasks
+- TaskDecomposer - Dynamic task tree decomposition
+- QueueManager - BullMQ queue management
+- ContextAccumulator - Redis-based context sharing
+
+These were part of an earlier complex architecture but the current system uses a simpler, production-ready approach with direct execution and in-memory context passing.
 
 The system is now **production-ready** and **fully functional** with zero external dependencies beyond PostgreSQL and AI API keys.

@@ -3,9 +3,12 @@ import { RequirementsAnalyzer } from '../analysis/requirementsAnalyzer';
 import { ComplexityEstimator } from '../analysis/complexityEstimator';
 import { ComponentDecomposer } from '../generation/frontend/componentDecomposer';
 import { DatabaseSchemaEvolution } from '../generation/backend/databaseSchemaEvolution';
+import { APIEndpointDecomposer } from '../generation/backend/apiEndpointDecomposer';
 import { DeploymentTaskDecomposer } from '../deployment/deploymentTaskDecomposer';
 import { PromptChainVisualizer } from '../visualization/promptChainVisualizer';
 import { ExplainabilityLayer } from '../visualization/explainabilityLayer';
+import { ModelSelector, ModelSelectionStrategy, createModelSelector } from '../core/modelSelector';
+import { ModelName } from '../types/modelConfig';
 
 /**
  * Simplified Takoss Orchestrator - Demonstrates integration of all components
@@ -15,6 +18,14 @@ export interface ProjectRequest {
   projectName: string;
   description: string;
   requirements: string;
+  modelStrategy?: ModelSelectionStrategy; // 'default', 'cost-optimized', 'quality-optimized', 'custom'
+  customModels?: {
+    requirementsAnalysis?: ModelName;
+    schemaGeneration?: ModelName;
+    componentGeneration?: ModelName;
+    apiGeneration?: ModelName;
+    deploymentGeneration?: ModelName;
+  };
 }
 
 export interface GenerationResult {
@@ -23,10 +34,32 @@ export interface GenerationResult {
   phases: {
     analysis?: any;
     complexity?: any;
-    database?: any;
-    frontend?: any;
-    deployment?: any;
+    database?: {
+      schema?: string;
+      entitiesCount: number;
+    };
+    frontend?: {
+      componentCount: number;
+      components?: Array<{ id: string; name: string; code: string; fileName: string }>;
+    };
+    backend?: {
+      routes?: Array<{ path: string; code: string }>;
+    };
+    deployment?: {
+      ready: boolean;
+      dockerFile?: string;
+      dockerCompose?: string;
+      dockerIgnore?: string;
+    };
   };
+  modelsUsed?: {
+    requirementsAnalysis?: ModelName;
+    schemaGeneration?: ModelName;
+    componentGeneration?: ModelName;
+    apiGeneration?: ModelName;
+    deploymentGeneration?: ModelName;
+  };
+  estimatedCost?: number;
   visualization?: string;
   explanation?: any;
 }
@@ -37,6 +70,7 @@ export class SimpleTakossOrchestrator {
   private complexityEstimator: ComplexityEstimator;
   private componentDecomposer: ComponentDecomposer;
   private schemaEvolution: DatabaseSchemaEvolution;
+  private apiDecomposer: APIEndpointDecomposer;
   private deploymentDecomposer: DeploymentTaskDecomposer;
   private visualizer: PromptChainVisualizer;
   private explainability: ExplainabilityLayer;
@@ -47,7 +81,8 @@ export class SimpleTakossOrchestrator {
     this.requirementsAnalyzer = new RequirementsAnalyzer(key);
     this.complexityEstimator = new ComplexityEstimator();
     this.componentDecomposer = new ComponentDecomposer(key);
-    this.schemaEvolution = new DatabaseSchemaEvolution();
+    this.schemaEvolution = new DatabaseSchemaEvolution(key);
+    this.apiDecomposer = new APIEndpointDecomposer(key);
     this.deploymentDecomposer = new DeploymentTaskDecomposer(key);
     this.visualizer = new PromptChainVisualizer();
     this.explainability = new ExplainabilityLayer(key);
@@ -57,7 +92,25 @@ export class SimpleTakossOrchestrator {
     const projectId = `proj-${Date.now()}`;
     const phases: GenerationResult['phases'] = {};
 
+    // Initialize model selector
+    const modelSelector = request.customModels
+      ? new ModelSelector({
+          strategy: 'custom',
+          customPreferences: request.customModels,
+        })
+      : request.modelStrategy && ['default', 'cost-optimized', 'quality-optimized'].includes(request.modelStrategy)
+      ? createModelSelector(request.modelStrategy as 'default' | 'cost-optimized' | 'quality-optimized')
+      : createModelSelector('default');
+
+    const modelSelections = modelSelector.getProjectModelSelections();
+    const selectionSummary = modelSelector.getSelectionSummary();
+
     console.log(`\n🚀 Generating: ${request.projectName}`);
+    console.log(`\n🤖 Model Selection Strategy: ${request.modelStrategy || 'default'}`);
+    console.log(`\n📊 Models Selected:`);
+    selectionSummary.forEach((selection) => {
+      console.log(`   ${selection.taskType}: ${selection.model} (${selection.provider}, ${selection.quality})`);
+    });
 
     try {
       // Phase 1: Analysis
@@ -78,24 +131,125 @@ export class SimpleTakossOrchestrator {
 
       // Phase 3: Database Schema
       console.log('\n🗄️  Phase 3: Database Schema...');
-      phases.database = { entitiesCount: analysisResult.requirements.entities.length };
-      console.log('✓ Schema analysis complete');
+
+      // Generate Prisma schema from entities and relationships
+      const schemaStep = this.schemaEvolution.generateInitialSchema(
+        analysisResult.requirements.entities,
+        analysisResult.requirements.relationships
+      );
+
+      // Generate complete Prisma schema file
+      let schemaFile = this.schemaEvolution.generateSchemaFile(schemaStep);
+
+      // Optionally refine schema with AI suggestions
+      try {
+        console.log('  Refining schema with AI...');
+        schemaFile = await this.schemaEvolution.refineSchema(schemaFile);
+      } catch (error) {
+        console.log('  Using base schema (refinement skipped)');
+      }
+
+      phases.database = {
+        schema: schemaFile,
+        entitiesCount: analysisResult.requirements.entities.length,
+      };
+
+      console.log(`✓ Generated schema for ${schemaStep.models.length} models`);
 
       // Phase 4: Frontend Components
       console.log('\n🎨 Phase 4: Frontend Components...');
-      if (analysisResult.requirements.uiRequirements.length > 0) {
-        const uiReq = analysisResult.requirements.uiRequirements[0];
-        const components = await this.componentDecomposer.generateComponentsFromRequirement(
-          uiReq
-        );
-        phases.frontend = { componentCount: Array.isArray(components) ? components.length : 0 };
-        console.log(`✓ Generated components`);
+      const allComponents: Array<{ id: string; name: string; code: string; fileName: string }> = [];
+
+      // Generate components for ALL UI requirements (not just the first one)
+      for (const uiReq of analysisResult.requirements.uiRequirements) {
+        console.log(`  Generating components for: ${uiReq.component}`);
+        const componentMap = await this.componentDecomposer.generateComponentsFromRequirement(uiReq);
+
+        // Get component chain to map IDs to names and file names
+        const chain = await this.componentDecomposer['decomposeUIRequirement'](uiReq);
+
+        // Store the actual generated code
+        componentMap.forEach((code, id) => {
+          const compPrompt = chain.components.find((c) => c.id === id);
+          if (compPrompt) {
+            allComponents.push({
+              id,
+              name: compPrompt.componentName,
+              code,
+              fileName: compPrompt.fileName,
+            });
+          }
+        });
       }
 
-      // Phase 5: Deployment Config
-      console.log('\n🚢 Phase 5: Deployment...');
-      phases.deployment = { ready: true };
-      console.log(`✓ Deployment analysis complete`);
+      phases.frontend = {
+        componentCount: allComponents.length,
+        components: allComponents
+      };
+      console.log(`✓ Generated ${allComponents.length} component(s)`);
+
+      // Phase 5: Backend API
+      console.log('\n⚙️  Phase 5: Backend API...');
+
+      // Decompose entities and features into API endpoints
+      const apiPlan = await this.apiDecomposer.decomposeToEndpoints(
+        analysisResult.requirements.entities,
+        analysisResult.requirements.features,
+        analysisResult.requirements.relationships
+      );
+
+      // Generate code for each endpoint
+      const routes: Array<{ path: string; code: string }> = [];
+      for (const endpointPrompt of apiPlan.prompts) {
+        console.log(`  Generating endpoint: ${endpointPrompt.endpointDef.method} ${endpointPrompt.endpointDef.path}`);
+        const code = await this.apiDecomposer.generateEndpointCode(endpointPrompt);
+        routes.push({
+          path: `/handlers/${endpointPrompt.fileName}`,
+          code,
+        });
+      }
+
+      // Generate main router file
+      const routerCode = this.apiDecomposer.generateAPIRouter(apiPlan);
+      routes.push({
+        path: '/router.ts',
+        code: routerCode,
+      });
+
+      phases.backend = {
+        routes,
+      };
+
+      console.log(`✓ Generated ${routes.length} route file(s)`);
+
+      // Phase 6: Deployment Config
+      console.log('\n🚢 Phase 6: Deployment...');
+
+      // Generate deployment configurations
+      const deploymentPlan = await this.deploymentDecomposer.generateDeploymentPlan({
+        appName: request.projectName,
+        hasBackend: true,
+        hasFrontend: phases.frontend?.componentCount ? phases.frontend.componentCount > 0 : false,
+        hasDatabase: phases.database?.entitiesCount ? phases.database.entitiesCount > 0 : false,
+        databaseType: 'postgresql',
+        hasRedis: false,
+        platform: 'docker',
+        nodeVersion: '18',
+      });
+
+      // Extract deployment artifacts
+      const dockerFile = deploymentPlan.artifacts.find((a) => a.type === 'dockerfile')?.content;
+      const dockerCompose = deploymentPlan.artifacts.find((a) => a.type === 'compose')?.content;
+      const dockerIgnore = deploymentPlan.artifacts.find((a) => a.fileName === '.dockerignore')?.content;
+
+      phases.deployment = {
+        ready: true,
+        dockerFile,
+        dockerCompose,
+        dockerIgnore,
+      };
+
+      console.log(`✓ Generated ${deploymentPlan.artifacts.length} deployment file(s)`);
 
       // Generate visualization
       console.log('\n📊 Generating Visualization...');
@@ -104,7 +258,8 @@ export class SimpleTakossOrchestrator {
         { id: '2', type: 'Complexity', dependencies: ['1'], status: 'completed' },
         { id: '3', type: 'Database', dependencies: ['2'], status: 'completed' },
         { id: '4', type: 'Frontend', dependencies: ['3'], status: 'completed' },
-        { id: '5', type: 'Deployment', dependencies: ['4'], status: 'completed' },
+        { id: '5', type: 'Backend', dependencies: ['3'], status: 'completed' },
+        { id: '6', type: 'Deployment', dependencies: ['4', '5'], status: 'completed' },
       ];
       const visualization = this.visualizer.visualizeExecutionPlan(tasks);
       const htmlViz = this.visualizer.generateHTMLVisualization(
@@ -120,12 +275,31 @@ export class SimpleTakossOrchestrator {
         technologies: ['React', 'Node.js', 'Prisma', 'PostgreSQL'],
       });
 
+      // Calculate estimated cost
+      const estimatedCost = modelSelector.estimateProjectCost({
+        requirementsAnalysis: { input: 2000, output: 1000 },
+        schemaGeneration: { input: 3000, output: 1500 },
+        componentGeneration: { input: 5000, output: 3000 },
+        apiGeneration: { input: 4000, output: 2500 },
+        deploymentGeneration: { input: 2000, output: 1000 },
+        refinement: { input: 3000, output: 1500 },
+      });
+
+      console.log(`\n💰 Estimated Cost: $${estimatedCost.toFixed(4)}`);
       console.log('\n✅ Generation Complete!\n');
 
       return {
         success: true,
         projectId,
         phases,
+        modelsUsed: {
+          requirementsAnalysis: modelSelections.requirementsAnalysis,
+          schemaGeneration: modelSelections.schemaGeneration,
+          componentGeneration: modelSelections.componentGeneration,
+          apiGeneration: modelSelections.apiGeneration,
+          deploymentGeneration: modelSelections.deploymentGeneration,
+        },
+        estimatedCost,
         visualization: htmlViz,
         explanation,
       };

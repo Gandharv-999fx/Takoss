@@ -1,3 +1,19 @@
+/**
+ * ⚠️ UNUSED - Kept for reference
+ *
+ * This file contains static prompt templates for React components, Express routes,
+ * Prisma schemas, authentication, testing, and Docker configurations.
+ *
+ * The current production system uses specialized generators (ComponentDecomposer,
+ * APIEndpointDecomposer, DatabaseSchemaEvolution, DeploymentTaskDecomposer) that
+ * dynamically generate context-aware prompts based on the specific requirements.
+ *
+ * These static templates could be useful as:
+ * - Examples for new prompt generation logic
+ * - Fallback templates when dynamic generation fails
+ * - Reference for prompt structure and best practices
+ */
+
 import { PromptTemplate } from '../types/interfaces';
 import { v4 as uuidv4 } from 'uuid';
 

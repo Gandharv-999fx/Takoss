@@ -1,8 +1,21 @@
+/**
+ * ⚠️ UNUSED - Kept for reference
+ *
+ * This file provides dynamic task decomposition capabilities for breaking down
+ * complex requirements into hierarchical subtask trees.
+ *
+ * The current production system (SimpleTakossOrchestrator) uses a fixed 6-phase
+ * pipeline instead of dynamic decomposition.
+ *
+ * This would be useful for projects where the complexity varies significantly and
+ * dynamic decomposition is needed based on requirement analysis.
+ */
+
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  TaskNode, 
-  SubtaskTree, 
-  AppRequirement, 
+import {
+  TaskNode,
+  SubtaskTree,
+  AppRequirement,
   TaskDecompositionConfig,
   PromptTemplate
 } from '../types/interfaces';
