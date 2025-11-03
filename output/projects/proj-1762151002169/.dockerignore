@@ -1,0 +1,39 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+dist
+build
+.next
+
+# Testing
+coverage
+.nyc_output
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs
+
+# CI/CD
+.github
+
+# Misc
+.DS_Store
+*.log

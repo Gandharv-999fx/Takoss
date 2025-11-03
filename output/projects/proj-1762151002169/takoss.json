@@ -1,0 +1,25 @@
+{
+  "projectId": "proj-1762151002169",
+  "projectName": "a basic html page",
+  "description": "a pasic page html form page just to enter name no backend is required",
+  "requirements": "no backnd is needed . Just a html page to enter name noting else",
+  "generatedAt": "2025-11-03T06:24:44.528Z",
+  "files": [
+    "backend/src/routes/handlers/postNameentryCreate.ts",
+    "backend/src/routes/handlers/getNameentryRead.ts",
+    "backend/src/routes/handlers/getNameentryList.ts",
+    "backend/src/routes/handlers/putNameentryUpdate.ts",
+    "backend/src/routes/handlers/deleteNameentryDelete.ts",
+    "backend/src/routes/router.ts",
+    "backend/src/server.ts",
+    "backend/package.json",
+    "backend/tsconfig.json",
+    "prisma/schema.prisma",
+    "Dockerfile",
+    "docker-compose.yml",
+    ".dockerignore",
+    ".env.example",
+    "package.json"
+  ],
+  "generatedBy": "Takoss AI Application Builder"
+}

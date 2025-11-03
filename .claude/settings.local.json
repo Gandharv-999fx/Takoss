@@ -10,7 +10,9 @@
       "Bash(if not exist node_modules npm install)",
       "Bash(test:*)",
       "Bash(docker unpause:*)",
-      "Bash(docker-compose:*)"
+      "Bash(docker-compose:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [],
     "ask": []

@@ -167,23 +167,23 @@ export class SimpleTakossOrchestrator {
       // Generate components for ALL UI requirements (not just the first one)
       for (const uiReq of analysisResult.requirements.uiRequirements) {
         console.log(`  Generating components for: ${uiReq.component}`);
-        const componentMap = await componentDecomposer.generateComponentsFromRequirement(uiReq);
 
-        // Get component chain to map IDs to names and file names
+        // First decompose to get the component structure
         const chain = await componentDecomposer['decomposeUIRequirement'](uiReq);
+        console.log(`    Decomposed into ${chain.components.length} component(s)`);
 
-        // Store the actual generated code
-        componentMap.forEach((code, id) => {
-          const compPrompt = chain.components.find((c) => c.id === id);
-          if (compPrompt) {
-            allComponents.push({
-              id,
-              name: compPrompt.componentName,
-              code,
-              fileName: compPrompt.fileName,
-            });
-          }
-        });
+        // Then generate code for each component using the same chain
+        for (const compPrompt of chain.components) {
+          console.log(`    Generating ${compPrompt.componentName}...`);
+          const code = await componentDecomposer.generateComponent(compPrompt);
+          console.log(`    ✓ Generated ${compPrompt.componentName} (${code.length} chars)`);
+          allComponents.push({
+            id: compPrompt.id,
+            name: compPrompt.componentName,
+            code,
+            fileName: compPrompt.fileName,
+          });
+        }
       }
 
       phases.frontend = {

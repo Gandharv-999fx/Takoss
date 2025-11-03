@@ -149,6 +149,12 @@ export class APIEndpointDecomposer {
     const entityNamePlural = `${entityName}s`; // Simple pluralization
     const endpoints: EndpointDefinition[] = [];
 
+    // Validate entity has attributes
+    if (!entity.attributes || !Array.isArray(entity.attributes)) {
+      console.warn(`⚠️  Entity ${entity.name} has no attributes, skipping CRUD endpoint generation`);
+      return endpoints;
+    }
+
     // CREATE - POST /entities
     endpoints.push({
       id: uuidv4(),
